@@ -4,11 +4,11 @@ import { StyleSheet, TouchableOpacity, Image, Text } from 'react-native';
 import { colors } from '../../../theme';
 import { images } from '../../../assets';
 
-export function ChatListItem({ channel, onPress }) {
+export function ChatListItem({ conversation, onPress }) {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress}>
       <Image style={styles.cardIcon} source={images.message} />
-      <Text style={styles.cardText}>{channel.name}</Text>
+      <Text style={styles.cardText}>{conversation.name}</Text>
     </TouchableOpacity>
   );
 }

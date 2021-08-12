@@ -28,7 +28,7 @@ export const routes = {
   },
   ChatCreat: {
     name: 'chat-create',
-    title: 'New Channel',
+    title: 'New Conversation',
   },
 };
 

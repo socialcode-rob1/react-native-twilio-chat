@@ -15,8 +15,8 @@ import { ChatListItem } from './components/chat-list-item';
 export function ChatListScreen({ navigation, route }) {
   const { username } = route.params;
   const [loading, setLoading] = useState(true);
-  const { channels, updateChannels } = useApp();
-  const channelPaginator = useRef();
+  const { conversations, updateConversations } = useApp();
+  const conversationPaginator = useRef();
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -28,64 +28,67 @@ export function ChatListScreen({ navigation, route }) {
     });
   }, [navigation]);
 
-  const setChannelEvents = useCallback(
+  const setConversationEvents = useCallback(
     (client) => {
       client.on('messageAdded', (message) => {
-        updateChannels((prevChannels) =>
-          prevChannels.map((channel) =>
-            channel.id === message.channel.sid ? { ...channel, lastMessageTime: message.dateCreated } : channel,
+        console.log('ChatListScreen::setConversationEvents::event::messageAdded::message', message);
+        updateConversations((prevConversations) =>
+          prevConversations.map((conversation) =>
+            conversation.id === message.conversation.sid
+              ? { ...conversation, lastMessageTime: message.dateCreated }
+              : conversation,
           ),
         );
       });
       return client;
     },
-    [updateChannels],
+    [updateConversations],
   );
 
-  const getSubscribedChannels = useCallback(
+  const getSubscribedConversations = useCallback(
     (client) =>
-      client.getSubscribedChannels().then((paginator) => {
-        channelPaginator.current = paginator;
-        const newChannels = TwilioService.getInstance().parseChannels(channelPaginator.current.items);
-        updateChannels(newChannels);
+      client.getSubscribedConversations().then((paginator) => {
+        conversationPaginator.current = paginator;
+        const newConversations = TwilioService.getInstance().parseConversations(conversationPaginator.current.items);
+        console.log('ChatListScreen::getSubscribedConversations::conversations', newConversations);
+        updateConversations(newConversations);
       }),
-    [updateChannels],
+    [updateConversations],
   );
 
   useEffect(() => {
     getToken(username)
       .then((token) => TwilioService.getInstance().getChatClient(token))
       .then(() => TwilioService.getInstance().addTokenListener(getToken))
-      .then(setChannelEvents)
-      .then(getSubscribedChannels)
-      .catch((err) => showMessage({ message: err.message, type: 'danger' }))
-      .finally(() => setLoading(false));
+      .then(setConversationEvents)
+      .then(getSubscribedConversations)
+      .catch((err) => showMessage({ message: err.message, type: 'danger' }));
+    // .finally(() => setLoading(false));
 
     return () => TwilioService.getInstance().clientShutdown();
-  }, [username, setChannelEvents, getSubscribedChannels]);
+  }, [username, setConversationEvents, getSubscribedConversations]);
 
-  const sortedChannels = useMemo(
-    () => channels.sort((channelA, channelB) => channelB.lastMessageTime - channelA.lastMessageTime),
-    [channels],
+  const sortedConversations = useMemo(
+    () =>
+      conversations.sort(
+        (conversationA, conversationB) => conversationB.lastMessageTime - conversationA.lastMessageTime,
+      ),
+    [conversations],
   );
 
   return (
     <View style={styles.screen}>
-      {loading ? (
-        <ChatListLoader />
-      ) : (
-        <FlatList
-          data={sortedChannels}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <ChatListItem
-              channel={item}
-              onPress={() => navigation.navigate(routes.ChatRoom.name, { channelId: item.id, identity: username })}
-            />
-          )}
-          ListEmptyComponent={<ChatListEmpty />}
-        />
-      )}
+      <FlatList
+        data={sortedConversations}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <ChatListItem
+            conversation={item}
+            onPress={() => navigation.navigate(routes.ChatRoom.name, { conversationId: item.id, identity: username })}
+          />
+        )}
+        ListEmptyComponent={<ChatListEmpty />}
+      />
     </View>
   );
 }

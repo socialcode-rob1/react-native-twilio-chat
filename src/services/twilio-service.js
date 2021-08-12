@@ -1,4 +1,4 @@
-import { Client } from 'twilio-chat';
+import { Client } from '@twilio/conversations';
 
 export class TwilioService {
   static serviceInstance;
@@ -14,12 +14,15 @@ export class TwilioService {
   }
 
   async getChatClient(twilioToken) {
+    console.log('TwilioService::getChatClient::', twilioToken);
     if (!TwilioService.chatClient && !twilioToken) {
       throw new Error('Twilio token is null or undefined');
     }
     if (!TwilioService.chatClient && twilioToken) {
       return Client.create(twilioToken).then((client) => {
+        console.log('TwilioService::getChatClient::client', client);
         TwilioService.chatClient = client;
+        this.addConnectionStateListener();
         return TwilioService.chatClient;
       });
     }
@@ -27,11 +30,40 @@ export class TwilioService {
   }
 
   clientShutdown() {
+    console.log('TwilioService::clientShutdown::');
     TwilioService.chatClient?.shutdown();
     TwilioService.chatClient = null;
   }
 
+  addConnectionStateListener() {
+    console.log('TwilioService::addConnectionStateListener::');
+    if (!TwilioService.chatClient) {
+      throw new Error('Twilio client is null or undefined');
+    }
+    TwilioService.chatClient.on('connectionStateChanged', (state) => {
+      console.log('TwilioService::addConnectionStateListener::state::');
+      if (state === 'connecting') {
+        console.log('TwilioService::addConnectionStateListener::state::', state);
+        console.log('Connecting to Twilio…');
+      }
+      if (state === 'connected') {
+        console.log('You are connected.');
+      }
+      if (state === 'disconnecting') {
+        console.log('Disconnecting from Twilio…');
+      }
+      if (state === 'disconnected') {
+        console.log('Disconnected.');
+      }
+      if (state === 'denied') {
+        console.log('Failed to connect.');
+      }
+    });
+    return TwilioService.chatClient;
+  }
+
   addTokenListener(getToken) {
+    console.log('TwilioService::addTokenListener::', getToken);
     if (!TwilioService.chatClient) {
       throw new Error('Twilio client is null or undefined');
     }
@@ -45,17 +77,17 @@ export class TwilioService {
     return TwilioService.chatClient;
   }
 
-  parseChannels(channels) {
-    return channels.map(this.parseChannel);
+  parseConversations(conversations) {
+    return conversations.map(this.parseConversation);
   }
 
-  parseChannel(channel) {
+  parseConversation(conversation) {
     return {
-      id: channel.sid,
-      name: channel.friendlyName,
-      createdAt: channel.dateCreated,
-      updatedAt: channel.dateUpdated,
-      lastMessageTime: channel.lastMessage?.dateCreated ?? channel.dateUpdated ?? channel.dateCreated,
+      id: conversation.sid,
+      name: conversation.friendlyName,
+      createdAt: conversation.dateCreated,
+      updatedAt: conversation.dateUpdated,
+      lastMessageTime: conversation.lastMessage?.dateCreated ?? conversation.dateUpdated ?? conversation.dateCreated,
     };
   }
 

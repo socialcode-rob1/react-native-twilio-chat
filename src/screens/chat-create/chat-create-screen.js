@@ -9,13 +9,13 @@ import { LoadingOverlay } from '../../components';
 import { useApp } from '../../app-context';
 
 export function ChatCreateScreen() {
-  const [channelName, setChannelName] = useState('');
+  const [conversationName, setConversationName] = useState('');
   const [loading, setLoading] = useState(false);
-  const { channels, updateChannels } = useApp();
+  const { conversations, updateConversations } = useApp();
 
-  const onAddChannel = (channel) => {
-    const newChannel = TwilioService.getInstance().parseChannel(channel);
-    updateChannels(channels.concat(newChannel));
+  const onAddConversation = (conversation) => {
+    const newConversation = TwilioService.getInstance().parseConversation(conversation);
+    updateConversations(conversations.concat(newConversation));
   };
 
   const onCreateOrJoin = () => {
@@ -24,29 +24,33 @@ export function ChatCreateScreen() {
       .getChatClient()
       .then((client) =>
         client
-          .getChannelByUniqueName(channelName)
-          .then((channel) => (channel.channelState.status !== 'joined' ? channel.join() : channel))
-          .then(onAddChannel)
+          .getConversationByUniqueName(conversationName)
+          .then((conversation) =>
+            conversation.conversationState.status !== 'joined' ? conversation.join() : conversation,
+          )
+          .then(onAddConversation)
           .catch(() =>
-            client.createChannel({ uniqueName: channelName, friendlyName: channelName }).then((channel) => {
-              onAddChannel(channel);
-              channel.join();
-            }),
+            client
+              .createConversation({ uniqueName: conversationName, friendlyName: conversationName })
+              .then((conversation) => {
+                onAddConversation(conversation);
+                conversation.join();
+              }),
           ),
       )
       .then(() => showMessage({ message: 'You have joined.' }))
-      .catch((err) => showMessage({ message: err.message, type: 'danger' }))
-      .finally(() => setLoading(false));
+      .catch((err) => showMessage({ message: err.message, type: 'danger' }));
+    // .finally(() => setLoading(false));
   };
 
   return (
     <View style={styles.screen}>
       <Image style={styles.logo} source={images.message} />
       <TextInput
-        value={channelName}
-        onChangeText={setChannelName}
+        value={conversationName}
+        onChangeText={setConversationName}
         style={styles.input}
-        placeholder="Channel Name"
+        placeholder="Conversation Name"
         placeholderTextColor={colors.ghost}
       />
       <TouchableOpacity style={styles.button} onPress={onCreateOrJoin}>

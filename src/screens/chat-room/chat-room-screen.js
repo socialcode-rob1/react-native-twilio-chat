@@ -8,15 +8,15 @@ import { TwilioService } from '../../services/twilio-service';
 import { ChatLoader } from './components/chat-loader';
 
 export function ChatRoomScreen({ route }) {
-  const { channelId, identity } = route.params;
+  const { conversationId, identity } = route.params;
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
-  const chatClientChannel = useRef();
+  const chatClientConversation = useRef();
   const chatMessagesPaginator = useRef();
 
-  const setChannelEvents = useCallback((channel) => {
-    chatClientChannel.current = channel;
-    chatClientChannel.current.on('messageAdded', (message) => {
+  const setConversationEvents = useCallback((conversation) => {
+    chatClientConversation.current = conversation;
+    chatClientConversation.current.on('messageAdded', (message) => {
       const newMessage = TwilioService.getInstance().parseMessage(message);
       const { giftedId } = message.attributes;
       if (giftedId) {
@@ -28,43 +28,39 @@ export function ChatRoomScreen({ route }) {
         });
       }
     });
-    return chatClientChannel.current;
+    return chatClientConversation.current;
   }, []);
 
   useEffect(() => {
     TwilioService.getInstance()
       .getChatClient()
-      .then((client) => client.getChannelBySid(channelId))
-      .then((channel) => setChannelEvents(channel))
-      .then((currentChannel) => currentChannel.getMessages())
+      .then((client) => client.getConversationBySid(conversationId))
+      .then((conversation) => setConversationEvents(conversation))
+      .then((currentConversation) => currentConversation.getMessages())
       .then((paginator) => {
         chatMessagesPaginator.current = paginator;
         const newMessages = TwilioService.getInstance().parseMessages(paginator.items);
         setMessages(newMessages);
       })
-      .catch((err) => showMessage({ message: err.message, type: 'danger' }))
-      .finally(() => setLoading(false));
-  }, [channelId, setChannelEvents]);
+      .catch((err) => showMessage({ message: err.message, type: 'danger' }));
+    // .finally(() => setLoading(false));
+  }, [conversationId, setConversationEvents]);
 
   const onSend = useCallback((newMessages = []) => {
     const attributes = { giftedId: newMessages[0]._id };
     setMessages((prevMessages) => GiftedChat.append(prevMessages, newMessages));
-    chatClientChannel.current?.sendMessage(newMessages[0].text, attributes);
+    chatClientConversation.current?.sendMessage(newMessages[0].text, attributes);
   }, []);
 
   return (
     <View style={styles.screen}>
-      {loading ? (
-        <ChatLoader />
-      ) : (
-        <GiftedChat
-          messagesContainerStyle={styles.messageContainer}
-          messages={messages}
-          renderAvatarOnTop
-          onSend={(messages) => onSend(messages)}
-          user={{ _id: identity }}
-        />
-      )}
+      <GiftedChat
+        messagesContainerStyle={styles.messageContainer}
+        messages={messages}
+        renderAvatarOnTop
+        onSend={(messages) => onSend(messages)}
+        user={{ _id: identity }}
+      />
     </View>
   );
 }
